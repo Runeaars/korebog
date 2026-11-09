@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kørebog</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kørebog">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f3f5f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d1420" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-512.png">
+<style>
+/* Layout: one-screen app, content scrolls between a fixed bottom tab bar and the safe areas */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --ink: #0f1b2d;
+  --muted: #5b6678;
+  --line: #dde3ec;
+  --brand: #1a4fa0;
+  --go: #127a46;
+  --go-ink: #ffffff;
+  --stop: #c2321f;
+  --lane: #f2c230;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  --font-num: ui-rounded, -apple-system, "SF Pro Rounded", "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1420; --surface: #162133; --ink: #e8edf5; --muted: #93a0b4; --line: #24324a;
+    --brand: #6d9be6; --go: #2fae6b; --go-ink: #04140b; --stop: #ef5a45; --lane: #e6b928;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 var(--font);
+  -webkit-text-size-adjust: 100%;
+}
+[hidden] { display: none !important; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+main {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  max-width: 560px; margin: 0 auto;
+}
+h1 { font-size: 28px; margin: 8px 0 16px; letter-spacing: -0.02em; text-wrap: balance; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 24px 0 8px; font-weight: 600; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.stack { display: grid; gap: 12px; }
+
+/* Trip screen */
+.road { display: grid; justify-items: center; gap: 20px; padding-top: 12px; }
+.big {
+  width: min(64vw, 240px); aspect-ratio: 1; max-width: 100%; border-radius: 50%; border: 0;
+  display: grid; place-content: center; gap: 4px; text-align: center;
+  font-size: 26px; font-weight: 700; letter-spacing: -0.01em;
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,.35), inset 0 -6px 0 rgba(0,0,0,.15);
+  transition: transform .12s ease;
+}
+.big:active { transform: scale(.97); }
+.big small { font-size: 14px; font-weight: 500; opacity: .85; }
+.big.go { background: var(--go); color: var(--go-ink); }
+.big.stop { background: var(--stop); color: #fff; }
+.big:disabled { opacity: .6; }
+.lane { width: 6px; height: 36px; background: repeating-linear-gradient(var(--lane) 0 10px, transparent 10px 18px); border-radius: 3px; }
+.elapsed { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; }
+.status { width: 100%; }
+.status dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; }
+.status dt { color: var(--muted); font-size: 14px; }
+.status dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+.linkbtn { background: none; border: 0; color: var(--brand); padding: 8px 4px; font-weight: 600; }
+.btn {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 12px 16px;
+  font-weight: 600; min-height: 46px;
+}
+.btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.btn.danger { color: var(--stop); }
+.btn.wide { width: 100%; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row > * { flex: 1 1 auto; }
+
+/* List screen */
+.filters { display: flex; gap: 8px; }
+.filters select { flex: 1; min-width: 0; }
+select, input, textarea {
+  width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 11px 12px; min-height: 46px; font-size: 16px;
+}
+textarea { min-height: 70px; resize: vertical; }
+.totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.totals div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+.totals b { display: block; font-size: 20px; }
+.totals span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.trips { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.trips li button {
+  width: 100%; text-align: left; background: var(--surface); border: 0; padding: 12px 14px;
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 12px;
+}
+.trips .purpose { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.trips .route { grid-column: 1; font-size: 14px; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.trips .km { text-align: right; font-weight: 600; }
+.trips .kr { text-align: right; font-size: 14px; color: var(--muted); }
+.trips .date { grid-column: 1 / -1; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.empty { text-align: center; padding: 32px 16px; color: var(--muted); }
+
+/* Forms */
+label.f { display: grid; gap: 6px; font-size: 14px; color: var(--muted); }
+label.f > span { font-weight: 600; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.kmrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+.hint { font-size: 13px; color: var(--muted); }
+.rates td, .rates th { padding: 4px; text-align: left; font-size: 14px; }
+.rates th { color: var(--muted); font-weight: 600; }
+.rates input { min-height: 40px; padding: 8px; }
+
+/* Sheet */
+.sheet {
+  position: fixed; inset: 0; background: var(--bg); z-index: 20; overflow-y: auto;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.sheet form { max-width: 560px; margin: 0 auto; display: grid; gap: 14px; }
+.sheethead { display: flex; justify-content: space-between; align-items: center; }
+.sheethead h1 { margin: 8px 0; font-size: 24px; }
+
+/* Tab bar */
+nav.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
+  display: grid; grid-template-columns: repeat(3, 1fr);
+}
+nav.tabs button {
+  background: none; border: 0; padding: 8px 0 10px; display: grid; justify-items: center; gap: 2px;
+  font-size: 11px; font-weight: 600; color: var(--muted);
+}
+nav.tabs button[aria-current="page"] { color: var(--brand); }
+nav.tabs svg { width: 26px; height: 26px; }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 92px);
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px;
+  max-width: calc(100% - 32px); text-align: center;
+}
+.err { color: var(--stop); font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<main>
+  <!-- ===== Tur ===== -->
+  <section id="view-trip">
+    <h1>Kørebog</h1>
+    <div id="idle" class="road">
+      <button id="startBtn" class="big go" type="button">Start tur<small>Gemmer din position</small></button>
+      <div class="lane" aria-hidden="true"></div>
+      <p id="startErr" class="err" hidden></p>
+      <button id="startNoGps" class="linkbtn" type="button" hidden>Start uden GPS</button>
+      <div id="lastTrip" class="card status" hidden></div>
+      <button id="manualBtn" class="linkbtn" type="button">+ Tilføj en tur manuelt</button>
+    </div>
+
+    <div id="active" class="road" hidden>
+      <div class="elapsed num" id="elapsed">0:00:00</div>
+      <div class="card status">
+        <dl>
+          <dt>Startet</dt><dd id="actStart" class="num"></dd>
+          <dt>Fra</dt><dd id="actFrom"></dd>
+        </dl>
+      </div>
+      <div class="lane" aria-hidden="true"></div>
+      <button id="stopBtn" class="big stop" type="button">Afslut tur<small>Du er fremme</small></button>
+      <button id="cancelBtn" class="linkbtn" type="button">Annullér tur</button>
+    </div>
+  </section>
+
+  <!-- ===== Ture ===== -->
+  <section id="view-list" hidden>
+    <h1>Ture</h1>
+    <div class="filters">
+      <select id="fYear" aria-label="År"></select>
+      <select id="fMonth" aria-label="Måned"></select>
+    </div>
+    <div class="totals">
+      <div><span>Ture</span><b class="num" id="tCount">0</b></div>
+      <div><span>Km</span><b class="num" id="tKm">0</b></div>
+      <div><span>Kr.</span><b class="num" id="tKr">0</b></div>
+    </div>
+    <ul class="trips" id="tripList"></ul>
+    <p class="empty" id="listEmpty" hidden>Ingen ture i perioden. Tryk på <b>Start tur</b>, når du kører næste gang.</p>
+    <div class="stack" style="margin-top:16px">
+      <button class="btn primary wide" id="exportCsv" type="button">Eksportér periode til Excel (CSV)</button>
+    </div>
+  </section>
+
+  <!-- ===== Indstillinger ===== -->
+  <section id="view-settings" hidden>
+    <h1>Indstillinger</h1>
+    <div class="stack">
+      <label class="f"><span>Dit navn</span><input id="sName" autocomplete="name"></label>
+      <label class="f"><span>Bilens registreringsnummer</span><input id="sReg" autocapitalize="characters" placeholder="AB 12 345"></label>
+    </div>
+
+    <h2>Satser for kørselsgodtgørelse</h2>
+    <div class="card">
+      <table class="rates">
+        <thead><tr><th>År</th><th>0–<span id="thrLbl">20.000</span> km</th><th>Derover</th></tr></thead>
+        <tbody id="rateRows"></tbody>
+      </table>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" type="button" id="addYear">Tilføj år</button>
+      </div>
+      <p class="hint">Kr. pr. km. Grænsen på 20.000 km gælder pr. kalenderår. Satserne for 2025 og 2026 er Skattestyrelsens. Tjek skat.dk, når der kommer nye satser.</p>
+    </div>
+
+    <h2>Backup</h2>
+    <div class="stack">
+      <p class="hint" style="margin:0">Dine ture gemmes kun på denne telefon. Tag en backup en gang imellem, og gem den i Filer eller send den til dig selv.</p>
+      <button class="btn wide" type="button" id="backupBtn">Gem backup</button>
+      <label class="btn wide" style="text-align:center" for="restoreFile">Gendan fra backup…</label>
+      <input type="file" id="restoreFile" accept="application/json,.json" hidden>
+    </div>
+
+    <h2>Om</h2>
+    <p class="hint">Adresser findes via OpenStreetMap (Nominatim). Km beregnes som korteste rute ad vej (OSRM). Du kan altid rette begge dele, før du gemmer.</p>
+  </section>
+</main>
+
+<!-- ===== Tur-formular ===== -->
+<div class="sheet" id="sheet" hidden>
+  <form id="tripForm" novalidate>
+    <div class="sheethead">
+      <h1 id="formTitle">Gem tur</h1>
+      <button type="button" class="linkbtn" id="formClose">Luk</button>
+    </div>
+    <div class="grid3">
+      <label class="f"><span>Dato</span><input type="date" id="fDate" required></label>
+      <label class="f"><span>Start</span><input type="time" id="fStart"></label>
+      <label class="f"><span>Slut</span><input type="time" id="fEnd"></label>
+    </div>
+    <label class="f"><span>Formål</span><input id="fPurpose" required placeholder="F.eks. Møde hos kunde, Nordvej A/S" enterkeyhint="next"></label>
+    <label class="f"><span>Fra</span><input id="fFrom" required autocomplete="off"></label>
+    <label class="f"><span>Til</span><input id="fTo" required autocomplete="off"></label>
+    <div class="kmrow">
+      <label class="f"><span>Km</span><input id="fKm" inputmode="decimal" required class="num"></label>
+      <button type="button" class="btn" id="calcKm">Beregn km</button>
+    </div>
+    <p class="hint" id="kmHint"></p>
+    <label class="f"><span>Note (valgfri)</span><textarea id="fNote"></textarea></label>
+    <p class="err" id="formErr" hidden></p>
+    <button type="submit" class="btn primary wide">Gem tur</button>
+    <div class="row">
+      <button type="button" class="btn" id="returnBtn" hidden>Lav returtur</button>
+      <button type="button" class="btn danger" id="deleteBtn">Kassér</button>
+    </div>
+  </form>
+</div>
+
+<nav class="tabs" aria-label="Sider">
+  <button type="button" data-view="trip" aria-current="page">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M6 17l1.5-5.5A2 2 0 0 1 9.4 10h5.2a2 2 0 0 1 1.9 1.5L18 17"/><circle cx="8" cy="17.5" r="1.5"/><circle cx="16" cy="17.5" r="1.5"/><path d="M12 3v3"/></svg>
+    Tur
+  </button>
+  <button type="button" data-view="list">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
+    Ture
+  </button>
+  <button type="button" data-view="settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+    Indstillinger
+  </button>
+</nav>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+'use strict';
+const KEY = 'korebog.v1';
+const DEFAULT_RATES = { '2025': [3.81, 2.23], '2026': [3.94, 2.28] };
+const MONTHS = ['januar','februar','marts','april','maj','juni','juli','august','september','oktober','november','december'];
+const $ = s => document.querySelector(s);
+const fmtKm = n => (Math.round(n * 10) / 10).toLocaleString('da-DK', { maximumFractionDigits: 1 });
+const fmtKr = n => n.toLocaleString('da-DK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pad = n => String(n).padStart(2, '0');
+const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const hhmm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const parseNum = v => { const n = parseFloat(String(v).replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : NaN; };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+/* ---------- state ---------- */
+function migrate(s) {
+  s = s && typeof s === 'object' ? s : {};
+  s.trips = Array.isArray(s.trips) ? s.trips : [];
+  s.settings = s.settings || {};
+  s.settings.rates = s.settings.rates || { ...DEFAULT_RATES };
+  if (!s.settings.threshold) s.settings.threshold = 20000;
+  s.active = s.active || null;
+  s.draft = s.draft || null;
+  return s;
+}
+let state;
+try { state = migrate(JSON.parse(localStorage.getItem(KEY))); } catch (e) { state = migrate({}); }
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch (e) { toast('Kunne ikke gemme på telefonen. Tag en backup.'); }
+}
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2800);
+}
+
+/* ---------- geo services ---------- */
+function getPos() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error('nogeo'));
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat: p.coords.latitude, lon: p.coords.longitude, acc: Math.round(p.coords.accuracy) }),
+      err => reject(err),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+  });
+}
+async function fetchJson(url, ms = 10000) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: ctl.signal, headers: { 'Accept': 'application/json' } });
+    if (!r.ok) throw new Error('http ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+function formatAddress(a) {
+  if (!a) return '';
+  const street = [a.road || a.pedestrian || a.footway || a.path, a.house_number].filter(Boolean).join(' ');
+  const city = [a.postcode, a.city || a.town || a.village || a.suburb || a.municipality].filter(Boolean).join(' ');
+  return [street, city].filter(Boolean).join(', ');
+}
+async function reverse(pos) {
+  if (!pos) return '';
+  try {
+    const j = await fetchJson(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=da&lat=${pos.lat}&lon=${pos.lon}`);
+    return formatAddress(j.address) || j.display_name || '';
+  } catch (e) { return ''; }
+}
+async function forward(q) {
+  const j = await fetchJson(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=da&countrycodes=dk,de,se&q=${encodeURIComponent(q)}`);
+  if (!j.length) return null;
+  return { lat: +j[0].lat, lon: +j[0].lon };
+}
+function haversineKm(a, b) {
+  const R = 6371, r = x => x * Math.PI / 180;
+  const dLat = r(b.lat - a.lat), dLon = r(b.lon - a.lon);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+async function routeKm(a, b) {
+  try {
+    const j = await fetchJson(`https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false`);
+    if (j.routes && j.routes[0]) return { km: Math.round(j.routes[0].distance / 100) / 10, source: 'rute' };
+  } catch (e) {}
+  return { km: Math.round(haversineKm(a, b) * 1.25 * 10) / 10, source: 'estimat' };
+}
+function geoErrorText(err) {
+  if (err && err.code === 1) return 'Appen har ikke adgang til din position. Åbn Indstillinger → Anonymitet og sikkerhed → Lokalitetstjenester → Safari-websteder, og vælg "Når appen er i brug".';
+  if (err && err.code === 3) return 'Det tog for lang tid at finde din position. Prøv igen, gerne udendørs.';
+  return 'Din position kunne ikke findes. Prøv igen.';
+}
+
+/* ---------- navigation ---------- */
+let currentView = 'trip';
+document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
+function show(v) {
+  currentView = v;
+  ['trip', 'list', 'settings'].forEach(n => { $('#view-' + n).hidden = n !== v; });
+  document.querySelectorAll('nav.tabs button').forEach(b => {
+    if (b.dataset.view === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  if (v === 'trip') renderTrip();
+  if (v === 'list') renderList();
+  if (v === 'settings') renderSettings();
+  window.scrollTo(0, 0);
+}
+
+/* ---------- trip screen ---------- */
+let tick;
+function renderTrip() {
+  const a = state.active;
+  $('#idle').hidden = !!a; $('#active').hidden = !a;
+  clearInterval(tick);
+  if (a) {
+    const started = new Date(a.startedAt);
+    $('#actStart').textContent = started.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' }) + ' kl. ' + hhmm(started);
+    $('#actFrom').textContent = a.address || (a.pos ? 'Finder adresse…' : 'Uden GPS – udfyldes ved afslutning');
+    const upd = () => {
+      const s = Math.max(0, Math.floor((Date.now() - a.startedAt) / 1000));
+      $('#elapsed').textContent = `${Math.floor(s / 3600)}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
+    };
+    upd(); tick = setInterval(upd, 1000);
+  } else {
+    const last = [...state.trips].sort(tripSort).pop();
+    const lt = $('#lastTrip');
+    if (last) {
+      lt.hidden = false;
+      lt.innerHTML = `<dl><dt>Seneste</dt><dd>${esc(last.purpose)}</dd><dt></dt><dd class="small muted">${esc(last.from)} → ${esc(last.to)}</dd><dt></dt><dd class="small muted num">${esc(longDate(last.date))} · ${fmtKm(last.km)} km</dd></dl>`;
+    } else lt.hidden = true;
+  }
+}
+function longDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${d}. ${MONTHS[m - 1]} ${y}`;
+}
+
+$('#startBtn').addEventListener('click', async () => {
+  const btn = $('#startBtn');
+  btn.disabled = true; btn.firstChild.textContent = 'Finder position…';
+  $('#startErr').hidden = true; $('#startNoGps').hidden = true;
+  try {
+    const pos = await getPos();
+    beginTrip(pos);
+  } catch (err) {
+    $('#startErr').textContent = geoErrorText(err); $('#startErr').hidden = false;
+    $('#startNoGps').hidden = false;
+  } finally {
+    btn.disabled = false; btn.firstChild.textContent = 'Start tur';
+  }
+});
+$('#startNoGps').addEventListener('click', () => { $('#startErr').hidden = true; $('#startNoGps').hidden = true; beginTrip(null); });
+
+async function beginTrip(pos) {
+  state.active = { startedAt: Date.now(), pos, address: '' };
+  save(); renderTrip();
+  if (pos) {
+    const addr = await reverse(pos);
+    if (state.active && state.active.pos === pos) {
+      state.active.address = addr; save(); renderTrip();
+    }
+  }
+}
+
+$('#cancelBtn').addEventListener('click', () => {
+  const b = $('#cancelBtn');
+  if (b.dataset.armed) { state.active = null; save(); renderTrip(); toast('Turen er annulleret'); delete b.dataset.armed; b.textContent = 'Annullér tur'; return; }
+  b.dataset.armed = '1'; b.textContent = 'Tryk igen for at annullere';
+  setTimeout(() => { delete b.dataset.armed; b.textContent = 'Annullér tur'; }, 4000);
+});
+
+$('#stopBtn').addEventListener('click', async () => {
+  const a = state.active; if (!a) return;
+  const btn = $('#stopBtn');
+  btn.disabled = true; btn.firstChild.textContent = 'Finder position…';
+  let endPos = null;
+  try { endPos = await getPos(); } catch (e) { toast('Slutposition ikke fundet – skriv adressen selv'); }
+  btn.firstChild.textContent = 'Beregner km…';
+  let from = a.address;
+  if (!from && a.pos) from = await reverse(a.pos);
+  const to = endPos ? await reverse(endPos) : '';
+  let km = '', kmSource = 'manuel';
+  if (a.pos && endPos) { const r = await routeKm(a.pos, endPos); km = r.km; kmSource = r.source; }
+  const start = new Date(a.startedAt), end = new Date();
+  state.draft = {
+    id: null, date: isoDate(start), startTime: hhmm(start), endTime: hhmm(end),
+    from, to, km, kmSource, purpose: '', note: '', startPos: a.pos, endPos
+  };
+  state.active = null; save();
+  btn.disabled = false; btn.firstChild.textContent = 'Afslut tur';
+  renderTrip();
+  openForm(state.draft, 'new');
+});
+
+$('#manualBtn').addEventListener('click', () => {
+  const now = new Date();
+  state.draft = { id: null, date: isoDate(now), startTime: '', endTime: '', from: '', to: '', km: '', kmSource: 'manuel', purpose: '', note: '', startPos: null, endPos: null };
+  save(); openForm(state.draft, 'manual');
+});
+
+/* ---------- form ---------- */
+let formMode = 'new', formTrip = null;
+function openForm(t, mode) {
+  formMode = mode; formTrip = { ...t };
+  $('#formTitle').textContent = mode === 'edit' ? 'Redigér tur' : mode === 'manual' ? 'Ny tur' : 'Gem tur';
+  $('#fDate').value = t.date || ''; $('#fStart').value = t.startTime || ''; $('#fEnd').value = t.endTime || '';
+  $('#fPurpose').value = t.purpose || ''; $('#fFrom').value = t.from || ''; $('#fTo').value = t.to || '';
+  $('#fKm').value = t.km === '' || t.km == null ? '' : String(t.km).replace('.', ',');
+  $('#fNote').value = t.note || '';
+  setKmHint(t.kmSource);
+  $('#formErr').hidden = true;
+  $('#deleteBtn').textContent = mode === 'edit' ? 'Slet tur' : 'Kassér';
+  delete $('#deleteBtn').dataset.armed;
+  $('#returnBtn').hidden = mode !== 'edit';
+  $('#formClose').hidden = mode === 'new';
+  $('#sheet').hidden = false; $('#sheet').scrollTop = 0;
+  if (mode !== 'edit' && !t.purpose) setTimeout(() => $('#fPurpose').focus(), 50);
+}
+function setKmHint(src) {
+  $('#kmHint').textContent = src === 'rute' ? 'Km er beregnet som korteste rute ad vej. Ret tallet, hvis du kørte en anden vej.'
+    : src === 'estimat' ? 'Ruten kunne ikke beregnes. Km er et skøn ud fra afstanden i luftlinje (+25 %). Tjek tallet.'
+    : 'Skriv km, eller tryk "Beregn km" for at beregne ruten ud fra adresserne.';
+}
+function closeForm() { $('#sheet').hidden = true; formTrip = null; }
+$('#formClose').addEventListener('click', () => {
+  if (formMode === 'manual') { state.draft = null; save(); }
+  closeForm();
+});
+['#fFrom', '#fTo'].forEach(s => $(s).addEventListener('input', () => {
+  if (!formTrip) return;
+  if (s === '#fFrom') formTrip.startPos = null; else formTrip.endPos = null;
+}));
+$('#fKm').addEventListener('input', () => { if (formTrip) { formTrip.kmSource = 'manuel'; } });
+
+$('#calcKm').addEventListener('click', async () => {
+  const b = $('#calcKm'); b.disabled = true; b.textContent = 'Beregner…';
+  try {
+    let a = formTrip.startPos, z = formTrip.endPos;
+    if (!a) a = await forward($('#fFrom').value.trim());
+    if (!z) z = await forward($('#fTo').value.trim());
+    if (!a || !z) { toast('En af adresserne kunne ikke findes. Skriv vej, nr. og by.'); return; }
+    formTrip.startPos = a; formTrip.endPos = z;
+    const r = await routeKm(a, z);
+    $('#fKm').value = String(r.km).replace('.', ','); formTrip.kmSource = r.source; setKmHint(r.source);
+  } catch (e) { toast('Ingen forbindelse. Skriv km selv.'); }
+  finally { b.disabled = false; b.textContent = 'Beregn km'; }
+});
+
+$('#tripForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const km = parseNum($('#fKm').value);
+  const t = {
+    ...formTrip,
+    date: $('#fDate').value, startTime: $('#fStart').value, endTime: $('#fEnd').value,
+    purpose: $('#fPurpose').value.trim(), from: $('#fFrom').value.trim(), to: $('#fTo').value.trim(),
+    km, note: $('#fNote').value.trim()
+  };
+  const missing = [];
+  if (!t.date) missing.push('dato');
+  if (!t.purpose) missing.push('formål');
+  if (!t.from) missing.push('fra-adresse');
+  if (!t.to) missing.push('til-adresse');
+  if (!(km > 0)) missing.push('km');
+  if (missing.length) { $('#formErr').textContent = 'Udfyld ' + missing.join(', ') + '.'; $('#formErr').hidden = false; return; }
+  if (t.id) state.trips = state.trips.map(x => x.id === t.id ? t : x);
+  else { t.id = uid(); state.trips.push(t); }
+  state.draft = null; save(); closeForm();
+  toast('Turen er gemt');
+  if (currentView === 'list') renderList(); else renderTrip();
+});
+
+$('#deleteBtn').addEventListener('click', () => {
+  const b = $('#deleteBtn');
+  if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Tryk igen for at bekræfte'; return; }
+  if (formMode === 'edit') { state.trips = state.trips.filter(x => x.id !== formTrip.id); toast('Turen er slettet'); }
+  else toast('Turen er kasseret');
+  state.draft = null; save(); closeForm();
+  if (currentView === 'list') renderList(); else renderTrip();
+});
+
+$('#returnBtn').addEventListener('click', () => {
+  const src = formTrip;
+  const now = new Date();
+  const ret = { id: null, date: src.date, startTime: '', endTime: '', from: src.to, to: src.from, km: src.km,
+    kmSource: src.kmSource, purpose: src.purpose ? src.purpose + ' (retur)' : '', note: '', startPos: src.endPos, endPos: src.startPos };
+  state.draft = ret; save(); openForm(ret, 'manual');
+});
+
+/* ---------- allowance ---------- */
+function tripSort(a, b) { return (a.date + (a.startTime || '')).localeCompare(b.date + (b.startTime || '')); }
+function ratesFor(year) {
+  const r = state.settings.rates;
+  if (r[year]) return r[year];
+  const years = Object.keys(r).sort();
+  const prior = years.filter(y => y <= year).pop() || years[years.length - 1];
+  return r[prior] || [0, 0];
+}
+function allowances() {
+  const map = new Map(); const byYear = {};
+  [...state.trips].sort(tripSort).forEach(t => { (byYear[t.date.slice(0, 4)] ||= []).push(t); });
+  const thr = state.settings.threshold;
+  for (const y in byYear) {
+    const [hi, lo] = ratesFor(y); let cum = 0;
+    for (const t of byYear[y]) {
+      const kmHi = Math.max(0, Math.min(t.km, thr - cum)); const kmLo = t.km - kmHi;
+      const kr = Math.round((kmHi * hi + kmLo * lo) * 100) / 100;
+      map.set(t.id, { kr, rate: kmLo > 0 ? (kmHi > 0 ? 'blandet' : lo) : hi, cumulative: cum + t.km });
+      cum += t.km;
+    }
+  }
+  return map;
+}
+
+/* ---------- list ---------- */
+const filter = { year: String(new Date().getFullYear()), month: String(new Date().getMonth() + 1) };
+function renderList() {
+  const years = new Set(state.trips.map(t => t.date.slice(0, 4))); years.add(String(new Date().getFullYear()));
+  const ys = [...years].sort().reverse();
+  if (!ys.includes(filter.year)) filter.year = ys[0];
+  $('#fYear').innerHTML = ys.map(y => `<option ${y === filter.year ? 'selected' : ''}>${y}</option>`).join('');
+  $('#fMonth').innerHTML = `<option value="all" ${filter.month === 'all' ? 'selected' : ''}>Hele året</option>` +
+    MONTHS.map((m, i) => `<option value="${i + 1}" ${String(i + 1) === filter.month ? 'selected' : ''}>${m[0].toUpperCase() + m.slice(1)}</option>`).join('');
+  const trips = filtered();
+  const al = allowances();
+  const totKm = trips.reduce((s, t) => s + t.km, 0);
+  const totKr = trips.reduce((s, t) => s + (al.get(t.id)?.kr || 0), 0);
+  $('#tCount').textContent = trips.length; $('#tKm').textContent = fmtKm(totKm); $('#tKr').textContent = fmtKr(totKr);
+  $('#listEmpty').hidden = trips.length > 0; $('#tripList').hidden = trips.length === 0;
+  $('#exportCsv').disabled = trips.length === 0;
+  $('#tripList').innerHTML = [...trips].reverse().map(t => `
+    <li><button type="button" data-id="${esc(t.id)}">
+      <span class="date num">${esc(longDate(t.date))}${t.startTime ? ' · ' + esc(t.startTime) : ''}</span>
+      <span class="purpose">${esc(t.purpose)}</span><span class="km num">${fmtKm(t.km)} km</span>
+      <span class="route">${esc(t.from)} → ${esc(t.to)}</span><span class="kr num">${fmtKr(al.get(t.id)?.kr || 0)} kr.</span>
+    </button></li>`).join('');
+}
+function filtered() {
+  return state.trips.filter(t => t.date.slice(0, 4) === filter.year && (filter.month === 'all' || Number(t.date.slice(5, 7)) === Number(filter.month))).sort(tripSort);
+}
+$('#fYear').addEventListener('change', e => { filter.year = e.target.value; renderList(); });
+$('#fMonth').addEventListener('change', e => { filter.month = e.target.value; renderList(); });
+$('#tripList').addEventListener('click', e => {
+  const b = e.target.closest('button[data-id]'); if (!b) return;
+  const t = state.trips.find(x => x.id === b.dataset.id); if (t) openForm(t, 'edit');
+});
+
+/* ---------- export ---------- */
+async function offerFile(name, text, type) {
+  const blob = new Blob([text], { type });
+  try {
+    const file = new File([blob], name, { type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+const csvCell = v => { const s = String(v ?? ''); return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+const csvNum = (n, d = 2) => n.toLocaleString('da-DK', { minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: false });
+$('#exportCsv').addEventListener('click', () => {
+  const trips = filtered(); const al = allowances(); const s = state.settings;
+  const period = filter.month === 'all' ? filter.year : `${MONTHS[filter.month - 1]} ${filter.year}`;
+  const [hi, lo] = ratesFor(filter.year);
+  const rows = [
+    ['Kørselsregnskab', period], ['Navn', s.name || ''], ['Reg.nr.', s.regnr || ''],
+    ['Satser', `${csvNum(hi)} kr./km op til ${s.threshold.toLocaleString('da-DK')} km, derefter ${csvNum(lo)} kr./km`], [],
+    ['Dato', 'Start', 'Slut', 'Formål', 'Fra', 'Til', 'Km', 'Godtgørelse (kr.)', 'Note']
+  ];
+  let km = 0, kr = 0;
+  for (const t of trips) {
+    const a = al.get(t.id)?.kr || 0; km += t.km; kr += a;
+    rows.push([t.date.split('-').reverse().join('-'), t.startTime, t.endTime, t.purpose, t.from, t.to, csvNum(t.km, 1), csvNum(a), t.note]);
+  }
+  rows.push([], ['I alt', '', '', `${trips.length} ture`, '', '', csvNum(km, 1), csvNum(kr), '']);
+  const text = '﻿' + rows.map(r => r.map(csvCell).join(';')).join('\r\n');
+  const fname = filter.month === 'all' ? `korebog-${filter.year}.csv` : `korebog-${filter.year}-${pad(filter.month)}.csv`;
+  offerFile(fname, text, 'text/csv');
+});
+
+/* ---------- settings ---------- */
+function renderSettings() {
+  const s = state.settings;
+  $('#sName').value = s.name || ''; $('#sReg').value = s.regnr || '';
+  $('#thrLbl').textContent = s.threshold.toLocaleString('da-DK');
+  $('#rateRows').innerHTML = Object.keys(s.rates).sort().reverse().map(y => `
+    <tr><td class="num">${esc(y)}</td>
+    <td><input inputmode="decimal" class="num" data-year="${esc(y)}" data-i="0" value="${csvNum(s.rates[y][0])}" aria-label="Sats ${esc(y)} op til grænsen"></td>
+    <td><input inputmode="decimal" class="num" data-year="${esc(y)}" data-i="1" value="${csvNum(s.rates[y][1])}" aria-label="Sats ${esc(y)} over grænsen"></td></tr>`).join('');
+}
+$('#sName').addEventListener('change', e => { state.settings.name = e.target.value.trim(); save(); });
+$('#sReg').addEventListener('change', e => { state.settings.regnr = e.target.value.trim().toUpperCase(); save(); renderSettings(); });
+$('#rateRows').addEventListener('change', e => {
+  const i = e.target.dataset.i, y = e.target.dataset.year; if (i == null) return;
+  const n = parseNum(e.target.value);
+  if (!(n >= 0)) { toast('Skriv satsen som et tal, f.eks. 3,94'); renderSettings(); return; }
+  state.settings.rates[y][+i] = n; save(); toast('Sats gemt');
+});
+$('#addYear').addEventListener('click', () => {
+  const years = Object.keys(state.settings.rates).map(Number);
+  const next = String(Math.max(...years, new Date().getFullYear() - 1) + 1);
+  state.settings.rates[next] = [...ratesFor(String(next - 1))]; save(); renderSettings();
+  toast(`${next} tilføjet med sidste års satser. Ret dem, når de nye satser kommer.`);
+});
+$('#backupBtn').addEventListener('click', () => {
+  const data = JSON.stringify({ app: 'korebog', version: 1, exported: new Date().toISOString(), trips: state.trips, settings: state.settings }, null, 1);
+  offerFile(`korebog-backup-${isoDate(new Date())}.json`, data, 'application/json');
+});
+$('#restoreFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    if (j.app !== 'korebog' || !Array.isArray(j.trips)) throw new Error('format');
+    const known = new Set(state.trips.map(t => t.id)); let added = 0;
+    for (const t of j.trips) if (t && t.id && t.date && !known.has(t.id)) { state.trips.push(t); added++; }
+    if (j.settings) state.settings = migrate({ settings: { ...j.settings, ...pickSet(state.settings) } }).settings;
+    save(); renderSettings(); toast(`${added} ture gendannet`);
+  } catch (err) { toast('Filen er ikke en backup fra Kørebog.'); }
+});
+function pickSet(s) { const o = {}; if (s.name) o.name = s.name; if (s.regnr) o.regnr = s.regnr; return o; }
+
+/* ---------- boot ---------- */
+show('trip');
+if (state.draft) openForm(state.draft, state.draft.id ? 'edit' : (state.draft.startPos || state.draft.endTime ? 'new' : 'manual'));
+if (state.active && state.active.pos && !state.active.address) {
+  const p = state.active.pos;
+  reverse(p).then(addr => { if (state.active && state.active.pos && state.active.pos.lat === p.lat) { state.active.address = addr; save(); renderTrip(); } });
+}
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>

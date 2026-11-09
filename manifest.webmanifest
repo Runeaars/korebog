@@ -1,0 +1,15 @@
+{
+  "name": "Kørebog",
+  "short_name": "Kørebog",
+  "description": "Registrér køreture til kørselsgodtgørelse",
+  "lang": "da",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f8",
+  "theme_color": "#1a4fa0",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
